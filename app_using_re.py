@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
-import os 
+import os , re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -18,7 +18,7 @@ driver_path = '/home/geo/Downloads/Trade/download-bot/geckodriver-v0.33.0-linux6
 class download_chinamoney:
     def __init__(self) -> None:
         self.df = pd.read_excel('index_firm.xlsx')
-        self.key_words = pd.read_csv('key_words.txt',header=None)
+        self.key_words = pd.read_csv('key_words_for_rating_reports.txt',header=None)
 
     def get_download_link_and_text(self,soup,path):
         # soup = BeautifulSoup(txt,'html.parser')
@@ -91,25 +91,36 @@ class download_chinamoney:
             os.makedirs(path, exist_ok=True)
         return provinces , df['机构名称']
     
-    def __text_filter(self,text,soup):
-        target_links = []
-        for target in text[0] : # text[0] 取 columns为0的数值. 
-            df = soup.find_all(string=lambda text: target in text)
-            for element in df:
-                link = element.find_previous('a')
-                if link:
-                    target_links.append(link)
-        return target_links
+    def __soup_filter_links(self,item):
+        soup = BeautifulSoup(item.prettify(),'html.parser')
+        a = soup.select('a')
+        for link in a :
+            text = link.text 
+            if text : 
+                link = link.find_previous('a')
+                if link :
+                    return link
 
-    def text_filter(self,soup):
-        target_text = self.key_words
-        return self.__text_filter(target_text,soup)
+    def __text_filter(self,soup):
+        pattern = self.generate_pattern()
+        links = []
+        for item in soup :
+            if re.search(pattern, str(item)):
+                link = self.__soup_filter_links(item)    
+                links.append(link)
+        return links
+    
+    def generate_pattern(self):
+        key_words = self.key_words
+        pattern = "|".join(key_words[0])
+        return re.compile(fr"{pattern}",re.IGNORECASE)
     
     def __init_browser(self):
         service = Service(executable_path=driver_path)
         options = webdriver.FirefoxOptions()
         options.add_argument("--headless")  # 启用Headless模式 , 则不跳出模拟器运行.
         options.add_argument("--disable-gpu")  # 禁用GPU加速
+        # options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
         return service , options
     
     def __get_and_download_pdf(self,url,page_id,path):
@@ -125,7 +136,7 @@ class download_chinamoney:
         soup = BeautifulSoup(browser.page_source,'html.parser')
         
         ul = soup.find(id=page_id)
-        ul = self.text_filter(ul)
+        ul = self.__text_filter(ul)
         # print(f'ul 有过滤清楚吗? {ul}')
         for div in ul :                
             self.get_download_link_and_text(div,path)
@@ -136,7 +147,7 @@ class download_chinamoney:
         paths , firm_name_list = self.generate_file_path_and_maka_dir()
         for path , firm_name in zip(paths,firm_name_list) :
             url = f'https://www.chinamoney.com.cn/chinese/zqcwbgcwgd/?tabid=0&inextp=3,5&org={firm_name}&year=&repoType='
-            print(f'财务报告 : 爬虫截取文章 : {url}')
+            print(f'财务报告 > 爬虫截取文章 : {url}')
             self.__get_and_download_pdf(url,'bond-finance-content-list',path)
             print(f'{firm_name} 财务报告 done.')
             time.sleep(20)
@@ -145,7 +156,7 @@ class download_chinamoney:
         paths , firm_name_list = self.generate_file_path_and_maka_dir()
         for path , firm_name in zip(paths,firm_name_list) :
             url = f'https://www.chinamoney.com.cn/chinese/zxpjbgh/?bondSrno=&tabtabNum=1&tabid=0&bnc={firm_name}&ro=&sdt=&edt='
-            print(f'评级报告 : 爬虫截取文章 : {url}')
+            print(f'评级报告 > 爬虫截取文章 : {url}')
             self.__get_and_download_pdf(url,'page-disclosure-bond-rating-report-list',path)
             print(f'{firm_name} 评级报告 done.')
             time.sleep(20)
@@ -162,7 +173,7 @@ class download_chinamoney:
             # 针对评级报告.
             url = f'https://www.chinamoney.com.cn/chinese/zxpjbgh/?bondSrno=&tabtabNum=1&tabid=0&bnc={firm_name}&ro=&sdt=&edt='
             print(f'评级报告 > 爬虫截取文章 : {url}')
-            self.__get_and_download_pdf(url,'page-disclosure-bond-rating-report-list',path)
+            self.__get_and_download_pdf(url,'page-disclosure-bond-rating-report',path)
             print(f'{firm_name} 评级报告 done.')
             time.sleep(20)   
 
@@ -172,7 +183,8 @@ if __name__ == '__main__':
     # print(eng.read_firm())
     # eng.get_and_download_pdf_only_financial_statements()
     # 只针对评价报告.
-    eng.get_and_download_pdf_only_rating_reports()
+    print(eng.generate_pattern())
+    # eng.get_and_download_pdf_only_rating_reports()
     # 针对财务报表和评价报告.
     # eng.get_and_download_pdf()
     
