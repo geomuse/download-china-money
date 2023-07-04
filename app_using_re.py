@@ -13,12 +13,12 @@ from loguru import logger
 logger.add("log/error.log", level="ERROR", rotation="10 MB", format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {message}")
 
 # 设置Chrome浏览器驱动路径
-driver_path = '/home/geo/Downloads/Trade/download-bot/geckodriver-v0.33.0-linux64/'
+driver_path = '/home/geo/Downloads/development/download-bot/geckodriver-v0.33.0-linux64/'
 
 class download_chinamoney:
     def __init__(self) -> None:
         self.df = pd.read_excel('index_firm.xlsx')
-        self.key_words = pd.read_csv('key_words_for_rating_reports.txt',header=None)
+        self.key_words = pd.read_csv('key_words_for_re.txt',header=None)
 
     def get_download_link_and_text(self,soup,path):
         # soup = BeautifulSoup(txt,'html.parser')
@@ -120,10 +120,9 @@ class download_chinamoney:
         options = webdriver.FirefoxOptions()
         options.add_argument("--headless")  # 启用Headless模式 , 则不跳出模拟器运行.
         options.add_argument("--disable-gpu")  # 禁用GPU加速
-        # options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
         return service , options
     
-    def __get_and_download_pdf(self,url,page_id,path):
+    def get_and_download_pdf(self,url,page_id,path):
         service , options = self.__init_browser()
         browser = webdriver.Firefox(service=service, options=options)
         browser.get(url)
@@ -148,7 +147,7 @@ class download_chinamoney:
         for path , firm_name in zip(paths,firm_name_list) :
             url = f'https://www.chinamoney.com.cn/chinese/zqcwbgcwgd/?tabid=0&inextp=3,5&org={firm_name}&year=&repoType='
             print(f'财务报告 > 爬虫截取文章 : {url}')
-            self.__get_and_download_pdf(url,'bond-finance-content-list',path)
+            self.get_and_download_pdf(url,'bond-finance-content-list',path)
             print(f'{firm_name} 财务报告 done.')
             time.sleep(20)
 
@@ -157,23 +156,23 @@ class download_chinamoney:
         for path , firm_name in zip(paths,firm_name_list) :
             url = f'https://www.chinamoney.com.cn/chinese/zxpjbgh/?bondSrno=&tabtabNum=1&tabid=0&bnc={firm_name}&ro=&sdt=&edt='
             print(f'评级报告 > 爬虫截取文章 : {url}')
-            self.__get_and_download_pdf(url,'page-disclosure-bond-rating-report-list',path)
+            self.get_and_download_pdf(url,'page-disclosure-bond-rating-report-list',path)
             print(f'{firm_name} 评级报告 done.')
             time.sleep(20)
 
-    def get_and_download_pdf(self):
+    def get_and_download_pdf_for_all(self):
         paths , firm_name_list = self.generate_file_path_and_maka_dir()
         for path , firm_name in zip(paths,firm_name_list) :
             # 针对财务报告.
             url = f'https://www.chinamoney.com.cn/chinese/zqcwbgcwgd/?tabid=0&inextp=3,5&org={firm_name}&year=&repoType='
             print(f'财务报告 > 爬虫截取文章 : {url}')
-            self.__get_and_download_pdf(url,'bond-finance-content-list',path)
+            self.get_and_download_pdf(url,'bond-finance-content-list',path)
             print(f'{firm_name} 财务报告 done.')
             time.sleep(20)
             # 针对评级报告.
             url = f'https://www.chinamoney.com.cn/chinese/zxpjbgh/?bondSrno=&tabtabNum=1&tabid=0&bnc={firm_name}&ro=&sdt=&edt='
             print(f'评级报告 > 爬虫截取文章 : {url}')
-            self.__get_and_download_pdf(url,'page-disclosure-bond-rating-report',path)
+            self.get_and_download_pdf(url,'page-disclosure-bond-rating-report',path)
             print(f'{firm_name} 评级报告 done.')
             time.sleep(20)   
 
@@ -183,8 +182,7 @@ if __name__ == '__main__':
     # print(eng.read_firm())
     # eng.get_and_download_pdf_only_financial_statements()
     # 只针对评价报告.
-    print(eng.generate_pattern())
     # eng.get_and_download_pdf_only_rating_reports()
     # 针对财务报表和评价报告.
-    # eng.get_and_download_pdf()
+    # eng.get_and_download_pdf_for_all()
     
