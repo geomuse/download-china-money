@@ -187,4 +187,21 @@ print(requests.get(url , headers=headers).status_code)
 session = requests.Session()
 response = session.get(url)
 '''
-
+ips = [0.1,1,13,124,115,'failed',16,77,87]
+ips = [[1,1],[1,'failed'],[1,2],[1,8]]
+for n , ip in enumerate(ips):
+    # print(n,ip)
+    try : 
+        ip[1] += 1
+    except :
+        ip = ips[n+1]
+        ip[1] += 1
+        ips.pop(n+1)
+    finally :
+        print(ip)
+    # except Exception as e :
+    #     ip[1] = ips[n+1]
+    #     ip[1] = ip[1]+1
+    #     ips.pop(n+1)
+    # finally :
+    #     print(ip[1])

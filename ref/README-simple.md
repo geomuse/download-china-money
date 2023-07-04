@@ -24,6 +24,7 @@
     firefox如何检查版本? `bars > help > about firefox`
 
 4. 新版的网络爬虫分别有三个版本普通版,典型版,豪华版.
+
     - 普通版就旧版格式,不支持代理ip和headers.
     - 典型版,不支持代理ip.
     - 豪华版,支持所有反爬虫技术.
@@ -53,6 +54,8 @@ https://www.chinamoney.com.cn/dqs/cm-s-notice-query/fileDownLoad.do?mode=open&co
 江东控股集团有限责任公司 done. # 下载成功
 ```
 
+
+
 如果后续有特殊情况的下载内容目前不支持 , 可以到 `log/error.log` 查看错误内容手动下载并且告诉我 , 我会主动再次优化.
 
 # 目前程式的缺陷: 
@@ -67,6 +70,7 @@ https://www.chinamoney.com.cn/dqs/cm-s-notice-query/fileDownLoad.do?mode=open&co
 
 1. 建立一个flask frame work > 半自动审查 > 批量下载.
 2. 检测资源占用，提供使用者提醒.
+3. 请求过久就转换ip.
 
 # 后续进行中的反爬虫技术:
 
@@ -88,29 +92,7 @@ https://www.chinamoney.com.cn/dqs/cm-s-notice-query/fileDownLoad.do?mode=open&co
     反爬虫策略更新：网站维护人员可以持续改变网站的结构、URL格式、请求参数等，以使已有的爬虫程序失效。这迫使爬虫开发人员不断调整和更新他们的程序，以适应新的反爬虫措施。
 ```
 
-```
-使用Selenium库：
-
-    验证码（CAPTCHA）：使用Selenium自动化浏览器操作，通过截取验证码图片、使用第三方库进行图像处理和识别等方法来处理验证码。
-
-    动态生成页面：使用Selenium驱动真实浏览器加载页面，等待页面完全加载后再提取数据。
-
-    User-Agent检测：在创建Selenium WebDriver实例时，通过设置浏览器的User-Agent标头来伪装为常见的浏览器。
-
-    Cookie和Session：Selenium WebDriver自动管理和处理浏览器的Cookie和Session，可以在不同的请求之间保持会话状态。
-
-使用Requests库：
-
-    验证码（CAPTCHA）：使用第三方库（如pytesseract、Pillow等）进行图像处理和识别，自动解析验证码。然后，使用Requests库发送POST请求，将验证码结果作为参数提交给服务器。
-
-    IP封禁：使用代理服务器或VPN，通过设置Requests库的proxies参数来发送请求，以使用不同的IP地址。
-
-    请求频率限制：在发送请求之前使用time.sleep()函数添加延迟，以控制请求的频率。
-
-    User-Agent检测：在使用Requests库发送请求时，通过设置headers参数来指定自定义的User-Agent标头，以伪装为常见的浏览器。
-
-    Cookie和Session：使用Requests库的Session对象，通过设置和管理Cookie和Session来跟踪会话状态。
-```
+网络爬虫主要框架.
 
 ``` py
 from selenium import webdriver

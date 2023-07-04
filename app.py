@@ -25,12 +25,12 @@ class download_chinamoney:
         - 内容隐藏检测.
     '''
     # 定义类属性
-    df = pd.read_excel('index_firm.xlsx')
-    key_words = pd.read_csv('key_words.txt',header=None)
+    df = pd.read_excel('ref/index_firm.xlsx')
+    key_words = pd.read_csv('ref/key_words.txt',header=None)
+    fname_unique = []
 
     def __init__(self) -> None:
         ...
-        # print(self.df , self.key_words)
 
     def get_download_link_and_text(self,soup,path):
         # soup = BeautifulSoup(txt,'html.parser')
@@ -76,12 +76,16 @@ class download_chinamoney:
         if response.status_code == 200 :
             url = self.get_sub_web_content(response)
             res = self.requests_get(url)
-            if res.status_code == 200 :
-                with open(f'{path}/{fname}.pdf','wb') as f :
-                    f.write(res.content)
-                print(f'{url} : {fname} , please check > completed.')
-            else :
-                logger.error(f'{url} not work please check it.')
+            if fname not in self.fname_unique :
+                if res.status_code == 200 :
+                    with open(f'{path}/{fname}.pdf','wb') as f :
+                        f.write(res.content)
+                    print(f'{url} : {fname} , please check > completed.')
+                    self.fname_unique.append(fname)
+                else :
+                    logger.error(f'{url} not work please check it.')
+            else : 
+                print(f'{fname} repeat.')
         else : 
             logger.error(f'{link} not work please check it.')
 
@@ -213,7 +217,7 @@ class luxury_download_chinamoney(classic_download_chinamoney):
     除了父类的反爬虫以外含以下反爬虫技术:
         - IP封禁.
     '''
-    proxy_list = pd.read_csv('anti-component/socks5_proxies.txt',header=None)
+    proxy_list = pd.read_csv('ref/socks5_proxies.txt',header=None)
 
     def __init__(self) -> None:
         super(classic_download_chinamoney,self).__init__()
@@ -230,25 +234,25 @@ class luxury_download_chinamoney(classic_download_chinamoney):
         proxy_list[0] = proxy_list[0].apply(lambda text : str(text).split(":"))
         proxy = []
         for _ in range(len(proxy_list)):
+            # print(proxy_list[0][_])
             ip , port = proxy_list[0][_]
             port = int(port)
-            proxy.append((ip,port))
+            proxy.append([ip,port])
         return proxy
 
-    def get_and_download_pdf(self,url,page_id,path):
-        service , options = self.init_browser()
+    def get_and_download_pdf(self,url,page_id,path,proxys):
+        service , options = self.init_browser() 
         
-        proxy = self.read_support_proxy() 
-        options.add_argument(f'--proxy-server=socks5://{proxy[0][0]}:{proxy[0][1]}')
-        print(f'im start to web scraping the website with {proxy[0][0]}')
-        for ip , port in proxy[1:] : # 第一个ip,port已经被初始化了.
+        for item , proxy in enumerate(proxys) : 
+            print(f'im start to web scraping the website with {proxy[0]}.')
             try :
+                options.add_argument(f'--proxy-server=socks5://{proxy[0]}:{proxy[1]}')
                 browser = webdriver.Firefox(service=service, options=options)
                 browser.get(url)
-                wait = WebDriverWait(browser, 18)
+                wait = WebDriverWait(browser, 7)
                 element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'records-total')))
                 
-                # 在页面上找到了目标元素
+                # 在页面上找到了目标元素.
                 print(f'共 {element.text} 条记录.')
 
                 soup = BeautifulSoup(browser.page_source,'html.parser')
@@ -260,30 +264,69 @@ class luxury_download_chinamoney(classic_download_chinamoney):
                     self.get_download_link_and_text(div,path)
                     time.sleep(10)  
 
-                # 如果成功执行爬取操作,跳出循环
+                # 如果成功执行爬取操作,跳出循环.
                 break
 
             except TimeoutException as e:
                 print('Proxy IP {} failed. TimeoutException.'.format(proxy))
                 print('failed url {url}.')
+                # 切换到下一个代理IP.
+                service , options = self.init_browser()
+                proxy = proxys[item+1]
+                proxys.pop(item+1)
+                options.add_argument(f'--proxy-server=socks5://{proxy[0]}:{proxy[1]}')
+                print(f'previous ip failed bcs timeout , im start to web scraping the website with {proxy[0]}.')
 
             except WebDriverException as e:
-                # 处理代理IP失败的情况
+                # 处理代理IP失败的情况.
                 print('Proxy IP {} failed. Trying another IP.'.format(proxy))
                 print('failed url {url}.')
-                # 切换到下一个代理IP
+                # 切换到下一个代理IP.
                 service , options = self.init_browser()
-                options.add_argument('--proxy-server=socks5://{}:{}'.format(ip, port))
-                print(f'previous ip failed , im start to web scraping the website with {ip}')
-            finally : 
+                proxy = proxys[item+1]
+                proxys.pop(item+1)
+                options.add_argument(f'--proxy-server=socks5://{proxy[0]}:{proxy[1]}')
+                print(f'previous ip failed bcs timeout , im start to web scraping the website with {proxy[0]}.')
+            finally :
+                # print('browser close.') 
                 browser.close()
-    
-    """
-    改进 proxy_list 问题. 
-    session get 函数.
-    requests get 函数改进.
-    """
 
+    def get_and_download_pdf_only_financial_statements(self):
+        proxys = self.read_support_proxy()
+        paths , firm_name_list = self.generate_file_path_and_maka_dir()
+        for path , firm_name in zip(paths,firm_name_list) :
+            url = f'https://www.chinamoney.com.cn/chinese/zqcwbgcwgd/?tabid=0&inextp=3,5&org={firm_name}&year=&repoType='
+            print(f'财务报告 : 爬虫截取文章 : {url}')
+            self.get_and_download_pdf(url,'bond-finance-content-list',path,proxys)
+            print(f'{firm_name} 财务报告 done.')
+            time.sleep(20)
+
+    def get_and_download_pdf_only_rating_reports(self):
+        proxys = self.read_support_proxy()
+        paths , firm_name_list = self.generate_file_path_and_maka_dir()
+        for path , firm_name in zip(paths,firm_name_list) :
+            url = f'https://www.chinamoney.com.cn/chinese/zxpjbgh/?bondSrno=&tabtabNum=1&tabid=0&bnc={firm_name}&ro=&sdt=&edt='
+            print(f'评级报告 : 爬虫截取文章 : {url}')
+            self.get_and_download_pdf(url,'page-disclosure-bond-rating-report-list',path,proxys)
+            print(f'{firm_name} 评级报告 done.')
+            time.sleep(20)
+
+    def get_and_download_pdf_for_all(self):
+        proxys = self.read_support_proxy()
+        paths , firm_name_list = self.generate_file_path_and_maka_dir()
+        for path , firm_name in zip(paths,firm_name_list) :
+            # 针对财务报告.
+            url = f'https://www.chinamoney.com.cn/chinese/zqcwbgcwgd/?tabid=0&inextp=3,5&org={firm_name}&year=&repoType='
+            print(f'财务报告 > 爬虫截取文章 : {url}')
+            self.get_and_download_pdf(url,'bond-finance-content-list',path,proxys)
+            print(f'{firm_name} 财务报告 done.')
+            time.sleep(20)
+            # 针对评级报告.
+            url = f'https://www.chinamoney.com.cn/chinese/zxpjbgh/?bondSrno=&tabtabNum=1&tabid=0&bnc={firm_name}&ro=&sdt=&edt='
+            print(f'评级报告 > 爬虫截取文章 : {url}')
+            self.get_and_download_pdf(url,'page-disclosure-bond-rating-report-list',path,proxys)
+            print(f'{firm_name} 评级报告 done.')
+            time.sleep(20)    
     
 if __name__ == '__main__':
     # eng = download_chinamoney()
@@ -304,6 +347,7 @@ if __name__ == '__main__':
     # 只针对财务报表.
     # luxury_eng.get_and_download_pdf_only_financial_statements()
     # 只针对评价报告.
+    # luxury_eng.read_support_proxy()
     luxury_eng.get_and_download_pdf_only_rating_reports()
     # 针对财务报表和评价报告.
     # luxury_eng.get_and_download_pdf_for_all()
